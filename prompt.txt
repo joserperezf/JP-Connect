@@ -1,0 +1,76 @@
+JP Connect — Native Android App (Jetpack Compose + Material Design 3)
+
+Build a fully functional Android application called JP Connect using Jetpack Compose and Material Design 3. The app manages wireless peer-to-peer connections (Bluetooth, NFC, Wi-Fi Direct). All visible UI text must be in Spanish.
+
+Global styles
+
+Background: #FFFFFF (surfaces), #F3F6FA (scaffold)
+Primary accent: #007BFF
+Text primary: #1A1A2E, text secondary: #6B7280
+Typography: Roboto (already system font on Android)
+Shape tokens: RoundedCornerShape(16.dp) for cards, RoundedCornerShape(12.dp) for chips/buttons
+Use MaterialTheme.colorScheme overriding primary = Color(0xFF007BFF)
+Navigation Use NavigationBar (Material 3) with 4 items at the bottom:
+
+Icon: Icons.Filled.Home · Label: "Dashboard"
+Icon: Icons.Filled.Radar (or Search) · Label: "Buscar"
+Icon: Icons.Filled.Folder · Label: "Archivos"
+Icon: Icons.Filled.Nfc · Label: "Tap"
+Use NavHost with rememberNavController() to manage the 4 destinations.
+
+Screen 1 — Dashboard
+
+TopAppBar with title "JP Connect" and subtitle "Estado de Conexiones" on a #007BFF background with white text.
+Three ElevatedCard items in a LazyColumn, each representing: Bluetooth, NFC, Wi-Fi Direct.
+Each card contains:
+A Box icon container (#EBF4FF background) with the relevant Icon composable
+The technology name in MaterialTheme.typography.titleMedium
+A Switch composable (right-aligned) bound to a MutableState<Boolean>
+Status text below: "Activado" (color #007BFF) or "Desactivado" (color #9CA3AF)
+When enabled: a chip row showing a live status string (e.g., "3 dispositivos conectados")
+Below the cards: a summary Card with a #007BFF gradient background showing active technology count.
+State: ViewModel with StateFlow<List<ConnectionState>>. Toggling calls BluetoothAdapter, NfcAdapter, or WifiP2pManager enable/disable APIs (request permissions with ActivityResultContracts.RequestMultiplePermissions).
+
+Screen 2 — Buscar
+
+TopAppBar title: "Dispositivos Cercanos"
+SearchBar (Material 3) at the top bound to a query: MutableState<String>
+LazyColumn of discovered devices, each row (ListItem):
+Leading icon: Bluetooth (#007BFF) or Wi-Fi (#16A34A) depending on transport
+Headline: device name (e.g., "Galaxy S22")
+Supporting text: signal strength (e.g., "-65 dBm") + 4-bar signal indicator drawn with Canvas
+Trailing: OutlinedButton labeled "Conectar" that toggles to a filled "Conectado" state
+A TextButton "Escanear" triggers WifiP2pManager.discoverPeers() and BluetoothAdapter.startDiscovery(). Show a CircularProgressIndicator while scanning.
+State: ViewModel with StateFlow<List<DiscoveredDevice>> populated by BroadcastReceiver callbacks for both WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION and BluetoothDevice.ACTION_FOUND.
+
+Screen 3 — Archivos
+
+TopAppBar title: "Transferencia Wi-Fi Direct"
+A dashed-border OutlinedButton full-width with Icons.Filled.Add and label "Seleccionar Archivos" — launches ActivityResultContracts.GetMultipleContents("*/*")
+An ElevatedCard showing the active transfer:
+File name "video.mp4", size, destination device name
+LinearProgressIndicator bound to transferProgress: StateFlow<Float> (0f–1f)
+Percentage text ("67%") and transfer speed ("2.3 MB/s") derived from the flow
+A "Enviando" status AssistChip
+A second ElevatedCard titled "Recibidos Recientemente" containing a LazyColumn of received files, each row a ListItem with file icon, name, size, and relative timestamp. A "Ver todos" TextButton navigates to a full file list screen.
+State: ViewModel exposes transferState: StateFlow<TransferState> and recentFiles: StateFlow<List<ReceivedFile>>. File transfer uses WifiP2pManager socket stream with a coroutine reading chunks and emitting progress.
+
+Screen 4 — Tap
+
+TopAppBar title: "NFC Tap & Share"
+Centered Column with:
+An animated illustration: two RoundedCornerShape phone silhouettes drawn in Canvas, connected by a dashed Path. When NFC is active, draw pulsing concentric rings using animateFloatAsState with InfiniteRepeatableSpec.
+Text (headline): "Acerca tu dispositivo para conectar" in MaterialTheme.typography.headlineSmall, centered.
+Supporting Text: "Mantén los dispositivos a menos de 4 cm. La transferencia comenzará automáticamente."
+Button (filled): "Activar NFC" / "Detener NFC" — calls NfcAdapter.enableReaderMode() / disableReaderMode()
+OutlinedButton: "Compartir mi Contacto" — creates an NDEF message from the device contact vCard and pushes it via NfcAdapter.setNdefPushMessage()
+Bottom Card: recent NFC history list with avatar initials, name, and relative timestamp.
+State: ViewModel with nfcActive: StateFlow<Boolean> and nfcHistory: StateFlow<List<NfcEvent>>.
+
+Permissions required (AndroidManifest.xml):
+
+BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT, BLUETOOTH_SCAN,
+ACCESS_WIFI_STATE, CHANGE_WIFI_STATE, ACCESS_FINE_LOCATION,
+NFC, ACCESS_NETWORK_STATE
+Architecture: Single-Activity, MVVM, Hilt for DI, StateFlow for UI state, coroutines for async I/O. Min SDK 26, Target SDK 34.
+Compatible with Android 7.0 (API level 24) and higher

@@ -21,22 +21,23 @@ function DashboardScreen() {
 
   useEffect(() => {
     // Check initial BLE state
-    BleClient.initialize().then(() => {
-      setBtEnabled(true);
+    BleClient.initialize().then(async () => {
+      const enabled = await BleClient.isEnabled();
+      setBtEnabled(enabled);
     }).catch(() => setBtEnabled(false));
 
     // Check initial NFC state
     CapacitorNfc.getStatus().then(res => {
       setNfcEnabled(res.status === 'NFC_OK');
     }).catch(console.error);
-    
+
     // Listen to NFC state changes natively
     const nfcListener = CapacitorNfc.addListener('nfcStateChange', (event) => {
       setNfcEnabled(event.enabled);
     });
 
     return () => {
-      nfcListener.then(l => l.remove()).catch(() => {});
+      nfcListener.then(l => l.remove()).catch(() => { });
     };
   }, []);
 
@@ -61,7 +62,12 @@ function DashboardScreen() {
         setBtEnabled(false);
       }
     } else if (!checked && btEnabled) {
-      setBtEnabled(false); 
+      try {
+        await BleClient.disable();
+      } catch (e) {
+        console.error("No se pudo desactivar Bluetooth", e);
+      }
+      setBtEnabled(false);
     }
   };
 
@@ -75,7 +81,7 @@ function DashboardScreen() {
       <IonContent className="ion-padding bg-gray-50">
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Conexiones Activas</h2>
-          
+
           <div className="space-y-4">
             <div className="gravity-card p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -134,7 +140,14 @@ function BuscarScreen() {
       setDevices([]);
       setConnectedId(null);
       await BleClient.initialize();
-      
+
+      const isBleEnabled = await BleClient.isEnabled();
+      if (!isBleEnabled) {
+        alert("Por favor, activa al menos una conexión (Bluetooth) en el Dashboard antes de buscar dispositivos.");
+        setScanning(false);
+        return;
+      }
+
       // On Android < 12, Location Services must be ON to scan for BLE devices
       const locEnabled = await BleClient.isLocationEnabled();
       if (!locEnabled) {
@@ -161,9 +174,31 @@ function BuscarScreen() {
     }
   };
 
-  const filteredDevices = devices.filter(d => 
+  const filteredDevices = devices.filter(d =>
     (d.device.name || "Unknown").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const toggleConnection = async (deviceId: string) => {
+    if (connectedId === deviceId) {
+      try {
+        await BleClient.disconnect(deviceId);
+        setConnectedId(null);
+      } catch (error) {
+        console.error("Error al desconectar:", error);
+      }
+    } else {
+      try {
+        if (connectedId) {
+          await BleClient.disconnect(connectedId);
+        }
+        await BleClient.connect(deviceId);
+        setConnectedId(deviceId);
+      } catch (error) {
+        console.error("Error al conectar:", error);
+        alert("Error al conectar al dispositivo. Asegúrate de que está encendido y cerca.");
+      }
+    }
+  };
 
   return (
     <IonPage>
@@ -172,8 +207,8 @@ function BuscarScreen() {
           <IonTitle className="font-bold text-gray-900">Buscar</IonTitle>
         </IonToolbar>
         <div className="px-4 pb-2 bg-white">
-          <IonSearchbar 
-            value={searchQuery} 
+          <IonSearchbar
+            value={searchQuery}
             onIonInput={(e) => setSearchQuery(e.target.value as string)}
             placeholder="Buscar dispositivos..."
             className="p-0 m-0"
@@ -185,7 +220,7 @@ function BuscarScreen() {
         <IonButton className="gravity-button mb-4" expand="block" onClick={scan} disabled={scanning}>
           {scanning ? <IonSpinner name="crescent" color="light" /> : "Escanear Dispositivos"}
         </IonButton>
-        
+
         {filteredDevices.length === 0 && !scanning && (
           <div className="text-center mt-10 text-gray-400">
             <IonIcon icon={bluetoothOutline} size="large" className="opacity-50 mb-2" />
@@ -205,12 +240,12 @@ function BuscarScreen() {
                   <p className="text-xs text-gray-500 m-0">RSSI: {result.rssi} dBm</p>
                 </div>
               </div>
-              <IonButton 
+              <IonButton
                 fill={connectedId === result.device.deviceId ? "solid" : "outline"}
                 color={connectedId === result.device.deviceId ? "success" : "primary"}
                 size="small"
                 shape="round"
-                onClick={() => setConnectedId(result.device.deviceId)}
+                onClick={() => toggleConnection(result.device.deviceId)}
               >
                 {connectedId === result.device.deviceId ? "Conectado" : "Conectar"}
               </IonButton>
@@ -226,7 +261,7 @@ function ArchivosScreen() {
   const [progress, setProgress] = useState(0);
   const [transferring, setTransferring] = useState(false);
   const [fileName, setFileName] = useState("");
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const simulateTransfer = (name: string) => {
@@ -259,15 +294,15 @@ function ArchivosScreen() {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding bg-gray-50">
-        
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
-          onChange={handleFileChange} 
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={handleFileChange}
         />
 
-        <div 
+        <div
           className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center bg-white mb-6 cursor-pointer hover:bg-gray-50 transition"
           onClick={() => fileInputRef.current?.click()}
         >
@@ -320,7 +355,7 @@ function TapScreen() {
 
   useEffect(() => {
     return () => {
-      CapacitorNfc.stopScanning().catch(() => {});
+      CapacitorNfc.stopScanning().catch(() => { });
     };
   }, []);
 
@@ -333,16 +368,16 @@ function TapScreen() {
     try {
       setIsScanning(true);
       setNfcStatus("Acerca un dispositivo NFC para compartir tu contacto...");
-      
+
       await CapacitorNfc.startScanning();
-      
+
       // Wait for a tag to be tapped before writing
       const listener = await CapacitorNfc.addListener("nfcEvent", async () => {
         const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL:${mobile}\nEMAIL:${email}\nEND:VCARD`;
-        
+
         const payload = new TextEncoder().encode(vcard);
         const message: any[] = [{
-          tnf: 2, 
+          tnf: 2,
           type: Array.from(new TextEncoder().encode("text/vcard")),
           id: [],
           payload: Array.from(payload)
@@ -355,12 +390,12 @@ function TapScreen() {
           console.error("Error escribiendo NFC", e);
           setNfcStatus("Error al escribir el contacto en la etiqueta.");
         }
-        
+
         setIsScanning(false);
         listener.remove();
         await CapacitorNfc.stopScanning();
       });
-      
+
     } catch (error) {
       console.error("Error iniciando NFC", error);
       setNfcStatus("Error al iniciar NFC.");
@@ -376,7 +411,7 @@ function TapScreen() {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding bg-gray-50">
-        
+
         <div className="mb-6 text-center">
           <div className="relative w-24 h-24 mx-auto mb-4">
             <div className={`absolute inset-0 bg-blue-100 rounded-full flex items-center justify-center ${isScanning ? 'pulse-ring' : ''}`}>
@@ -388,27 +423,27 @@ function TapScreen() {
         </div>
 
         <div className="gravity-card p-4 mb-6">
-          <IonInput 
+          <IonInput
             className="gravity-input"
-            label="Nombre Completo" 
-            labelPlacement="floating" 
+            label="Nombre Completo"
+            labelPlacement="floating"
             placeholder="Ej. Juan Pérez"
             value={name}
             onIonInput={e => setName(e.target.value as string)}
           />
-          <IonInput 
+          <IonInput
             className="gravity-input"
-            label="Teléfono Móvil" 
-            labelPlacement="floating" 
+            label="Teléfono Móvil"
+            labelPlacement="floating"
             type="tel"
             placeholder="Ej. +34 600 000 000"
             value={mobile}
             onIonInput={e => setMobile(e.target.value as string)}
           />
-          <IonInput 
+          <IonInput
             className="gravity-input"
-            label="Correo Electrónico" 
-            labelPlacement="floating" 
+            label="Correo Electrónico"
+            labelPlacement="floating"
             type="email"
             placeholder="Ej. juan@ejemplo.com"
             value={email}
@@ -416,9 +451,9 @@ function TapScreen() {
           />
         </div>
 
-        <IonButton 
-          className="gravity-button w-full" 
-          expand="block" 
+        <IonButton
+          className="gravity-button w-full"
+          expand="block"
           onClick={shareContact}
           disabled={isScanning}
         >

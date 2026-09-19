@@ -1,16 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Roboto', system-ui, sans-serif;
-  --color-primary: #007BFF;
-  --color-primary-dark: #0056CC;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-primary: #111827;
+  /* Deep almost-black for gravity feel */
+  --color-primary-dark: #000000;
+  --color-accent: #3B82F6;
+  /* Bright blue for accents */
   --color-surface: #FFFFFF;
-  --color-surface-variant: #F3F6FA;
-  --color-on-surface: #1A1A2E;
+  --color-surface-variant: #F9FAFB;
+  --color-on-surface: #111827;
   --color-on-surface-muted: #6B7280;
   --color-border: #E5E7EB;
-  --color-success: #22C55E;
+  --color-success: #10B981;
   --color-danger: #EF4444;
 }
 
@@ -19,86 +22,88 @@
 }
 
 body {
-  font-family: 'Roboto', system-ui, sans-serif;
-  background: #F0F2F5;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #F3F4F6;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  color: var(--color-on-surface);
 }
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.toggle-track {
-  width: 52px;
-  height: 28px;
-  border-radius: 14px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  flex-shrink: 0;
+/* Custom Ionic Variables for Gravity Theme */
+:root {
+  --ion-color-primary: #111827;
+  --ion-color-primary-rgb: 17, 24, 39;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0f1522;
+  --ion-color-primary-tint: #292f3d;
+
+  --ion-background-color: #F9FAFB;
+  --ion-text-color: #111827;
+
+  --ion-font-family: 'Inter', sans-serif;
 }
 
-.toggle-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: white;
-  position: absolute;
-  top: 3px;
-  transition: left 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-.ripple {
-  position: relative;
+/* Custom UI styling */
+.gravity-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #F3F4F6;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.ripple::after {
-  content: '';
-  display: block;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle, rgba(0,123,255,0.15) 10%, transparent 10.01%);
-  background-repeat: no-repeat;
-  background-position: 50%;
-  transform: scale(10, 10);
-  opacity: 0;
-  transition: transform .3s, opacity .5s;
+.gravity-card:active {
+  transform: scale(0.98);
 }
 
-.ripple:active::after {
-  transform: scale(0, 0);
-  opacity: 0.3;
-  transition: 0s;
+.gravity-input {
+  --background: #F3F4F6;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; }
+.gravity-button {
+  --background: #111827;
+  --background-activated: #000000;
+  --border-radius: 12px;
+  --box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.gravity-button-outline {
+  --border-color: #111827;
+  --border-radius: 12px;
+  --color: #111827;
+  font-weight: 600;
 }
 
 .pulse-ring {
-  animation: pulse-ring 2s ease-out infinite;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes progress-shine {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
 
-.progress-bar-animated {
-  background: linear-gradient(90deg, #007BFF 0%, #4DA6FF 50%, #007BFF 100%);
-  background-size: 200% 100%;
-  animation: progress-shine 1.5s linear infinite;
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
